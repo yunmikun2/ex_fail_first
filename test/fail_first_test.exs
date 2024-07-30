@@ -35,4 +35,16 @@ defmodule FailFirstTest do
     assert FailFirst.attempt(b) == {:error, :reason}
     assert FailFirst.attempt(b) == {:ok, :result}
   end
+
+  test "starts countdown again on reset" do
+    f = FailFirst.new(3)
+
+    assert FailFirst.attempt(f) == {:error, :reason}
+    assert :ok = FailFirst.reset(f)
+
+    assert FailFirst.attempt(f) == {:error, :reason}
+    assert FailFirst.attempt(f) == {:error, :reason}
+    assert FailFirst.attempt(f) == {:error, :reason}
+    assert FailFirst.attempt(f) == {:ok, :result}
+  end
 end

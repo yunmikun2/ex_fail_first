@@ -1,14 +1,22 @@
 defmodule FailFirst do
-  defstruct [:pid, :ok, :error]
+  defstruct [:pid, :total, :ok, :error]
 
-  def new(count, ok \\ {:ok, :result}, error \\ {:error, :reason}) when count >= 0 do
-    {:ok, pid} = Agent.start_link(fn -> count end)
-    %__MODULE__{pid: pid, ok: ok, error: error}
+  def new(total, ok \\ {:ok, :result}, error \\ {:error, :reason}) when total >= 0 do
+    {:ok, pid} = Agent.start_link(fn -> total end)
+    %__MODULE__{pid: pid, total: total, ok: ok, error: error}
   end
 
-  def clone(%__MODULE__{pid: pid, ok: ok, error: error}) do
-    count = Agent.get(pid, & &1)
-    new(count, ok, error)
+  def clone(%__MODULE__{pid: pid, total: total, ok: ok, error: error}) do
+    {:ok, pid} = Agent.start_link(fn -> Agent.get(pid, & &1) end)
+    %__MODULE__{pid: pid, total: total, ok: ok, error: error}
+  end
+
+  def reset(%__MODULE__{pid: pid, total: total}) do
+    Agent.update(pid, fn _ -> total end)
+  end
+
+  def count(%__MODULE__{pid: pid}) do
+    Agent.get(pid, & &1)
   end
 
   def attempt(%__MODULE__{pid: pid, ok: ok, error: error}) do
@@ -26,11 +34,13 @@ defmodule FailFirst do
     import Inspect.Algebra
 
     def inspect(fail_first, opts) do
-      count = Agent.get(fail_first.pid, & &1)
-
       concat([
         "#FailFirst<",
-        glue(string("left:"), to_doc(count, opts)),
+        glue(
+          to_doc(FailFirst.count(fail_first), opts),
+          "/",
+          to_doc(fail_first.total, opts)
+        ),
         break(),
         glue(string("ok:"), to_doc(fail_first.ok, opts)),
         break(),
